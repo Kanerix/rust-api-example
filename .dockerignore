@@ -1,0 +1,11 @@
+/target
+
+.gitignore
+.dockerignore
+Dockerfile
+
+.env
+.env.docker
+.env.example
+
+README.md

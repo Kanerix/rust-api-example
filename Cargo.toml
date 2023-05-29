@@ -1,0 +1,13 @@
+[package]
+name = "rust-api-example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.6.18", features = ["tokio"] }
+dotenv = "0.15.0"
+jsonwebtoken = "8.3.0"
+serde = "1.0.163"
+serde_json = "1.0.96"
+sqlx = { version = "0.6.3", features = ["postgres", "runtime-tokio-native-tls"] }
+tokio = { version = "1.28.1", features = ["full"] }
