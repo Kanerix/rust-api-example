@@ -8,7 +8,6 @@ pub enum EmailError {
 	TooShort,
 	TooLong,
 	WrongFormat,
-	BlacklistedDomain,
 }
 
 #[derive(Serialize, Debug)]
@@ -34,7 +33,6 @@ impl fmt::Display for EmailError {
 			EmailError::TooShort => write!(f, "Too short"),
 			EmailError::TooLong => write!(f, "Too long"),
 			EmailError::WrongFormat => write!(f, "Wrong format"),
-			EmailError::BlacklistedDomain => write!(f, "Blacklisted domain"),
 		}
 	}
 }
