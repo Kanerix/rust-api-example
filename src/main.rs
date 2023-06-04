@@ -1,17 +1,19 @@
+mod error;
+mod model;
 mod routes;
-mod util;
 
-use core::panic;
-use std::{
-	net::{Ipv4Addr, SocketAddrV4},
-	sync::Arc,
-};
+use std::net::{Ipv4Addr, SocketAddrV4};
 
 use axum::Router;
+use routes::Routes;
+use sqlx::migrate::Migrator;
 
-struct AppState {
+#[derive(Clone)]
+pub struct AppState {
 	db_pool: sqlx::PgPool,
 }
+
+static MIGRATOR: Migrator = sqlx::migrate!();
 
 #[tokio::main]
 async fn main() {
@@ -25,11 +27,11 @@ async fn main() {
 		panic!("Failed to connect to database: {}", conn_str);
 	};
 
-	let shared_state = Arc::new(AppState { db_pool });
-
+	let shared_state = AppState { db_pool };
 	let app = Router::new()
-		.with_state(shared_state)
-		.nest("/api", routes::Routes::new());
+		.nest("/api", Routes::new())
+		.with_state(shared_state);
+
 	let addr = SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 8080).into();
 	axum::Server::bind(&addr)
 		.serve(app.into_make_service())
