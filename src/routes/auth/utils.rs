@@ -8,7 +8,6 @@ pub enum EmailError {
 	TooShort,
 	TooLong,
 	WrongFormat,
-	BlacklistedDomain,
 }
 
 #[derive(Serialize, Debug)]
