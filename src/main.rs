@@ -6,14 +6,11 @@ use std::net::{Ipv4Addr, SocketAddrV4};
 
 use axum::Router;
 use routes::Routes;
-use sqlx::migrate::Migrator;
 
 #[derive(Clone)]
 pub struct AppState {
 	db_pool: sqlx::PgPool,
 }
-
-static MIGRATOR: Migrator = sqlx::migrate!();
 
 #[tokio::main]
 async fn main() {
