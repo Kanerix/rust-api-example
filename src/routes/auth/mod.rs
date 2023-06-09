@@ -6,7 +6,7 @@ use axum::{
 	http::{header::SET_COOKIE, Response, StatusCode},
 	response::IntoResponse,
 	routing::post,
-	Json, Router,
+	Router, Form,
 };
 use axum_extra::extract::cookie::Cookie;
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ use utils::{validate_email, validate_password, validate_username};
 
 use crate::{
 	model::User,
-	problem::{FormErr, Problem, ProblemVariant},
+	problem::{FormErr, Problem},
 	AppState,
 };
 
@@ -56,7 +56,7 @@ impl Auth {
 	/// The handler for registering a new user.
 	pub async fn register(
 		State(state): State<AppState>,
-		Json(payload): Json<RegisterPayload>,
+		Form(payload): Form<RegisterPayload>,
 	) -> Result<impl IntoResponse, Problem> {
 		let mut form_errors: Vec<FormErr> = Vec::new();
 
@@ -107,18 +107,18 @@ impl Auth {
 					let formatted = constraint.replace("users_", "").replace("_key", "");
 					return Err(Problem {
 						status: StatusCode::BAD_REQUEST,
-						short: format!("Invalid {formatted}"),
-						message: format!("The {formatted} already exsists."),
-						variant: ProblemVariant::StdErr,
+						title: format!("Invalid {formatted}"),
+						detail: format!("The {formatted} already exsists."),
+						form: None
 					});
 				}
 			}
 
 			return Err(Problem {
 				status: StatusCode::BAD_REQUEST,
-				short: "Failed to register".to_string(),
-				message: "Failed to register user.".to_string(),
-				variant: ProblemVariant::StdErr,
+				title: "Failed to register".to_string(),
+				detail: "Failed to register user.".to_string(),
+				form: None
 			});
 		}
 
@@ -128,7 +128,7 @@ impl Auth {
 	/// The handler for logging in.
 	pub async fn login(
 		State(state): State<AppState>,
-		Json(payload): Json<LoginPayload>,
+		Form(payload): Form<LoginPayload>,
 	) -> Result<impl IntoResponse, Problem> {
 		let hash = argon2::hash_encoded(
 			&payload.password.as_bytes(),
@@ -150,17 +150,17 @@ impl Auth {
 				if let Error::RowNotFound = err {
 					return Err(Problem {
 						status: StatusCode::BAD_REQUEST,
-						short: "Invalid email or password".to_string(),
-						message: "The email or password used is invalid.".to_string(),
-						variant: ProblemVariant::StdErr,
+						title: "Invalid email or password".to_string(),
+						detail: "The email or password used is invalid.".to_string(),
+						form: None
 					})
 				}
 
 				return Err(Problem {
 					status: StatusCode::BAD_REQUEST,
-					short: "Failed to login".to_string(),
-					message: "Failed to login user.".to_string(),
-					variant: ProblemVariant::StdErr,
+					title: "Failed to login".to_string(),
+					detail: "Failed to login user.".to_string(),
+					form: None
 				})
 			}
 		};
@@ -170,9 +170,9 @@ impl Auth {
 		if !matches {
 			return Err(Problem {
 				status: StatusCode::BAD_REQUEST,
-				short: "Invalid email or password".to_string(),
-				message: "The email or password used is invalid.".to_string(),
-				variant: ProblemVariant::StdErr,
+				title: "Invalid email or password".to_string(),
+				detail: "The email or password used is invalid.".to_string(),
+				form: None
 			});
 		}
 

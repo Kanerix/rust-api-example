@@ -13,32 +13,24 @@ pub struct FormErr {
 	pub issues: Issue,
 }
 
-/// The diffrent variants of problem that can occurre.
-#[derive(Serialize, Deserialize, Debug)]
-pub enum ProblemVariant {
-	#[serde(rename = "standard")]
-	StdErr,
-	#[serde(rename = "form")]
-	FormErr(Vec<FormErr>),
-}
-
 /// The problem that can be returned when an endpoint errors.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Problem {
     #[serde(skip_serializing, skip_deserializing)]
 	pub status: StatusCode,
-	pub short: String,
-	pub message: String,
-	pub variant: ProblemVariant,
+	pub title: String,
+	pub detail: String,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub form: Option<Vec<FormErr>>,
 }
 
 impl Problem {
 	pub fn from_form(value: Vec<FormErr>) -> Self {
 		Self {
 			status: StatusCode::BAD_REQUEST,
-			short: "Invalid form".to_string(),
-			message: "Invalid form data was recived.".to_string(),
-			variant: ProblemVariant::FormErr(value),
+			title: "Invalid form".to_string(),
+			detail: "Invalid form data was recived.".to_string(),
+			form: Some(value) 
 		}
 	}
 }
@@ -56,9 +48,9 @@ where
 	fn from(value: E) -> Self {
 		Self {
 			status: StatusCode::INTERNAL_SERVER_ERROR,
-			short: "Internal server error".to_string(),
-			message: value.to_string(),
-			variant: ProblemVariant::StdErr,
+			title: "Internal server error".to_string(),
+			detail: value.to_string(),
+			form: None
 		}
 	}
 }
