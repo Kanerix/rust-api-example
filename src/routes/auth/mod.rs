@@ -87,7 +87,7 @@ impl Auth {
 
 		let hash = argon2::hash_encoded(
 			&payload.password.as_bytes(),
-			&state.secret_salt_key.as_bytes(),
+			&state.env.hash_salt.as_bytes(),
 			&Config::default(),
 		)
 		.unwrap();
@@ -132,7 +132,7 @@ impl Auth {
 	) -> Result<impl IntoResponse, Problem> {
 		let hash = argon2::hash_encoded(
 			&payload.password.as_bytes(),
-			&state.secret_salt_key.as_bytes(),
+			&state.env.hash_salt.as_bytes(),
 			&Config::default(),
 		)?;
 
@@ -177,7 +177,7 @@ impl Auth {
 		}
 
 		let refresh_token = generate_refresh_token(32);
-		let access_token = generate_access_token(&user, &state.secret_jwt_key)?;
+		let access_token = generate_access_token(&user, &state.env.jwt_key)?;
 		sqlx::query!(
 			"INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)",
 			user.id,

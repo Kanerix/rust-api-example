@@ -1,4 +1,3 @@
-#![feature(try_trait_v2)]
 mod model;
 mod problem;
 mod routes;
@@ -12,10 +11,15 @@ use axum::Router;
 use routes::Routes;
 
 #[derive(Clone)]
+pub struct AppEnv {
+	jwt_key: String,
+	hash_salt: String,
+}
+
+#[derive(Clone)]
 pub struct AppState {
 	db_pool: sqlx::PgPool,
-	secret_jwt_key: String,
-	secret_salt_key: String,
+	env: AppEnv,
 }
 
 #[tokio::main]
@@ -30,13 +34,13 @@ async fn main() {
 		panic!("Failed to connect to database: {}", conn_str);
 	};
 
-	let secret_jwt_key = env::var("SECRET_JWT_KEY").unwrap();
-	let secret_salt_key = env::var("SECRET_HASH_SALT").unwrap();
+	let jwt_key = env::var("SECRET_JWT_KEY").unwrap();
+	let hash_salt = env::var("SECRET_HASH_SALT").unwrap();
 
+	let env = AppEnv { jwt_key, hash_salt };
 	let shared_state = AppState {
 		db_pool,
-		secret_jwt_key,
-		secret_salt_key,
+		env,
 	};
 	let app = Router::new()
 		.nest("/api", Routes::new())

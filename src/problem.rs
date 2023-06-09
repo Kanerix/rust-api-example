@@ -32,6 +32,17 @@ pub struct Problem {
 	pub variant: ProblemVariant,
 }
 
+impl Problem {
+	pub fn from_form(value: Vec<FormErr>) -> Self {
+		Self {
+			status: StatusCode::BAD_REQUEST,
+			short: "Invalid form".to_string(),
+			message: "Invalid form data was recived.".to_string(),
+			variant: ProblemVariant::FormErr(value),
+		}
+	}
+}
+
 impl IntoResponse for Problem {
 	fn into_response(self) -> Response {
 		(self.status, Json(self)).into_response()
@@ -48,17 +59,6 @@ where
 			short: "Internal server error".to_string(),
 			message: value.to_string(),
 			variant: ProblemVariant::StdErr,
-		}
-	}
-}
-
-impl Problem {
-	pub fn from_form(value: Vec<FormErr>) -> Self {
-		Self {
-			status: StatusCode::BAD_REQUEST,
-			short: "Invalid form".to_string(),
-			message: "Invalid form data was recived.".to_string(),
-			variant: ProblemVariant::FormErr(value),
 		}
 	}
 }
