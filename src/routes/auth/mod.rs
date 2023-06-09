@@ -47,7 +47,7 @@ pub struct LoginPayload {
 }
 
 impl Auth {
-	pub fn new() -> Router<AppState> {
+	pub fn routes() -> Router<AppState> {
 		Router::new()
 			.route("/register", post(Self::register))
 			.route("/login", post(Self::login))
@@ -86,8 +86,8 @@ impl Auth {
 		}
 
 		let hash = argon2::hash_encoded(
-			&payload.password.as_bytes(),
-			&state.env.hash_salt.as_bytes(),
+			payload.password.as_bytes(),
+			state.env.hash_salt.as_bytes(),
 			&Config::default(),
 		)
 		.unwrap();
@@ -131,8 +131,8 @@ impl Auth {
 		Form(payload): Form<LoginPayload>,
 	) -> Result<impl IntoResponse, Problem> {
 		let hash = argon2::hash_encoded(
-			&payload.password.as_bytes(),
-			&state.env.hash_salt.as_bytes(),
+			payload.password.as_bytes(),
+			state.env.hash_salt.as_bytes(),
 			&Config::default(),
 		)?;
 
@@ -165,7 +165,7 @@ impl Auth {
 			}
 		};
 
-		let matches = argon2::verify_encoded(&user.password, &payload.password.as_bytes())?;
+		let matches = argon2::verify_encoded(&user.password, payload.password.as_bytes())?;
 
 		if !matches {
 			return Err(Problem {

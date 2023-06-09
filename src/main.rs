@@ -43,7 +43,7 @@ async fn main() {
 		env,
 	};
 	let app = Router::new()
-		.nest("/api", Routes::new())
+		.nest("/api", Routes::generate())
 		.with_state(shared_state);
 
 	let addr = SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 8080).into();

@@ -7,7 +7,7 @@ pub mod auth;
 pub struct Routes;
 
 impl Routes {
-	pub fn new() -> Router<AppState> {
-		Router::new().nest("/auth", auth::Auth::new())
+	pub fn generate() -> Router<AppState> {
+		Router::new().nest("/auth", auth::Auth::routes())
 	}
 }

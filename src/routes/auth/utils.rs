@@ -64,7 +64,7 @@ impl fmt::Display for PasswordError {
 	}
 }
 
-pub fn validate_password<'a>(password: &'a str) -> Result<(), Vec<PasswordError>> {
+pub fn validate_password(password: &str) -> Result<(), Vec<PasswordError>> {
 	let mut issues = Vec::new();
 
 	if password.len() < 8 {
@@ -93,7 +93,7 @@ pub fn validate_password<'a>(password: &'a str) -> Result<(), Vec<PasswordError>
 	}
 }
 
-pub fn validate_username<'a>(username: &'a str) -> Result<(), Vec<UsernameError>> {
+pub fn validate_username(username: &str) -> Result<(), Vec<UsernameError>> {
 	let mut issues = Vec::new();
 
 	if username.len() < 3 {
@@ -113,7 +113,7 @@ pub fn validate_username<'a>(username: &'a str) -> Result<(), Vec<UsernameError>
 	}
 }
 
-pub fn validate_email<'a>(email: &'a str) -> Result<(), Vec<EmailError>> {
+pub fn validate_email(email: &str) -> Result<(), Vec<EmailError>> {
 	let mut issues = Vec::new();
 
 	// TODO: Remove unwrap
@@ -170,25 +170,25 @@ mod tests {
 
 	#[test]
 	fn validate_email_test() {
-		assert_eq!(validate_email("name@mail").is_ok(), false);
-		assert_eq!(validate_email("@mail.com").is_ok(), false);
-		assert_eq!(validate_email("name@.com").is_ok(), false);
-		assert_eq!(validate_email("name@mail.com").is_ok(), true);
+		assert!(!validate_email("name@mail").is_ok());
+		assert!(!validate_email("@mail.com").is_ok());
+		assert!(!validate_email("name@.com").is_ok());
+		assert!(validate_email("name@mail.com").is_ok());
 	}
 
 	#[test]
 	fn validate_username_test() {
-		assert_eq!(validate_username("!Username123").is_ok(), false);
-		assert_eq!(validate_username("Us").is_ok(), false);
-		assert_eq!(validate_username("Username123").is_ok(), true);
-		assert_eq!(validate_username("username").is_ok(), true);
+		assert!(!validate_username("!Username123").is_ok());
+		assert!(!validate_username("Us").is_ok());
+		assert!(validate_username("Username123").is_ok());
+		assert!(validate_username("username").is_ok());
 	}
 
 	#[test]
 	fn validate_password_test() {
-		assert_eq!(validate_password("password").is_ok(), false);
-		assert_eq!(validate_password("Password").is_ok(), false);
-		assert_eq!(validate_password("Password123").is_ok(), false);
-		assert_eq!(validate_password("!Password123").is_ok(), true);
+		assert!(!validate_password("password").is_ok());
+		assert!(!validate_password("Password").is_ok());
+		assert!(!validate_password("Password123").is_ok());
+		assert!(validate_password("!Password123").is_ok());
 	}
 }
