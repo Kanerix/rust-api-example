@@ -5,10 +5,13 @@ edition = "2021"
 
 [dependencies]
 axum = { version = "0.6.18", features = ["tokio"] }
+axum-extra = { version = "0.7.4", features = ["cookie"] }
 dotenv = "0.15.0"
 jsonwebtoken = "8.3.0"
+rand = "0.8.5"
 regex = "1.8.3"
+rust-argon2 = "1.0.0"
 serde = "1.0.163"
 serde_json = "1.0.96"
-sqlx = { version = "0.6.3", features = ["postgres", "runtime-tokio-native-tls"] }
+sqlx = { version = "0.6.3", features = ["postgres", "runtime-tokio-native-tls", "time"] }
 tokio = { version = "1.28.1", features = ["full"] }

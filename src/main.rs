@@ -1,8 +1,12 @@
-mod error;
+#![feature(try_trait_v2)]
 mod model;
+mod problem;
 mod routes;
 
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::{
+	env,
+	net::{Ipv4Addr, SocketAddrV4},
+};
 
 use axum::Router;
 use routes::Routes;
@@ -10,6 +14,8 @@ use routes::Routes;
 #[derive(Clone)]
 pub struct AppState {
 	db_pool: sqlx::PgPool,
+	secret_jwt_key: String,
+	secret_salt_key: String,
 }
 
 #[tokio::main]
@@ -24,7 +30,14 @@ async fn main() {
 		panic!("Failed to connect to database: {}", conn_str);
 	};
 
-	let shared_state = AppState { db_pool };
+	let secret_jwt_key = env::var("SECRET_JWT_KEY").unwrap();
+	let secret_salt_key = env::var("SECRET_HASH_SALT").unwrap();
+
+	let shared_state = AppState {
+		db_pool,
+		secret_jwt_key,
+		secret_salt_key,
+	};
 	let app = Router::new()
 		.nest("/api", Routes::new())
 		.with_state(shared_state);

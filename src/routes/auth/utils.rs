@@ -1,7 +1,11 @@
 use std::fmt;
 
+use jsonwebtoken::{encode, Header};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use regex::Regex;
 use serde::Serialize;
+
+use crate::model::User;
 
 #[derive(Serialize, Debug)]
 pub enum EmailError {
@@ -42,7 +46,7 @@ impl fmt::Display for UsernameError {
 		match self {
 			UsernameError::TooShort => write!(f, "Too short"),
 			UsernameError::TooLong => write!(f, "Too long"),
-			UsernameError::SpecialCharacters => write!(f, "Special characters"),
+			UsernameError::SpecialCharacters => write!(f, "Contains special characters"),
 		}
 	}
 }
@@ -52,10 +56,10 @@ impl fmt::Display for PasswordError {
 		match self {
 			PasswordError::TooShort => write!(f, "Too short"),
 			PasswordError::TooLong => write!(f, "Too long"),
-			PasswordError::NoSpecialCharacters => write!(f, "No special characters"),
-			PasswordError::NoUppercase => write!(f, "No uppercase"),
-			PasswordError::NoLowercase => write!(f, "No lowercase"),
-			PasswordError::NoNumbers => write!(f, "No numbers"),
+			PasswordError::NoSpecialCharacters => write!(f, "Contains no special characters"),
+			PasswordError::NoUppercase => write!(f, "Contains no uppercase letters"),
+			PasswordError::NoLowercase => write!(f, "Contains no lowercase letters"),
+			PasswordError::NoNumbers => write!(f, "Contains no numbers"),
 		}
 	}
 }
@@ -129,6 +133,35 @@ pub fn validate_email<'a>(email: &'a str) -> Result<(), Vec<EmailError>> {
 	} else {
 		Err(issues)
 	}
+}
+
+pub fn generate_refresh_token(length: usize) -> String {
+	let rng = thread_rng();
+	rng.sample_iter(&Alphanumeric)
+		.take(length)
+		.map(char::from)
+		.collect()
+}
+
+#[derive(Serialize, Debug)]
+struct Claims {
+	sub: String,
+	exp: usize,
+}
+
+pub fn generate_access_token(
+	user: &User,
+	secret: &String,
+) -> Result<String, jsonwebtoken::errors::Error> {
+	let claims = Claims {
+		sub: user.id.to_string(),
+		exp: 900,
+	};
+	encode(
+		&Header::default(),
+		&claims,
+		&jsonwebtoken::EncodingKey::from_secret(secret.as_ref()),
+	)
 }
 
 #[cfg(test)]

@@ -1,23 +1,48 @@
 mod utils;
 
-use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
-use serde::Deserialize;
+use argon2::Config;
+use axum::{
+	extract::State,
+	http::{header::SET_COOKIE, Response, StatusCode},
+	response::IntoResponse,
+	routing::post,
+	Json, Router,
+};
+use axum_extra::extract::cookie::Cookie;
+use serde::{Deserialize, Serialize};
 
 use sqlx::Error;
 use utils::{validate_email, validate_password, validate_username};
 
 use crate::{
-	error::{Err, FormErr, StdErr},
+	model::User,
+	problem::{FormErr, Problem, ProblemVariant},
 	AppState,
 };
 
+use self::utils::{generate_access_token, generate_refresh_token};
+
 pub struct Auth;
+
+/// Returned as the payload for a successful login.
+#[derive(Serialize, Debug)]
+pub struct AuthPayload {
+	refresh_token: String,
+	access_token: String,
+}
 
 /// Input for the `register` route.
 #[derive(Deserialize, Debug)]
-pub struct CreateUser {
+pub struct RegisterPayload {
 	email: String,
 	username: String,
+	password: String,
+}
+
+/// Input for the `login` route.
+#[derive(Deserialize, Debug)]
+pub struct LoginPayload {
+	email: String,
 	password: String,
 }
 
@@ -26,13 +51,13 @@ impl Auth {
 		Router::new()
 			.route("/register", post(Self::register))
 			.route("/login", post(Self::login))
-			.route("/logout", post(Self::logout))
 	}
 
+	/// The handler for registering a new user.
 	pub async fn register(
 		State(state): State<AppState>,
-		Json(payload): Json<CreateUser>,
-	) -> (StatusCode, Result<(), Json<Err>>) {
+		Json(payload): Json<RegisterPayload>,
+	) -> Result<impl IntoResponse, Problem> {
 		let mut form_errors: Vec<FormErr> = Vec::new();
 
 		if let Err(err) = validate_email(&payload.email) {
@@ -57,14 +82,21 @@ impl Auth {
 		};
 
 		if !form_errors.is_empty() {
-			return (StatusCode::BAD_REQUEST, Err(Json(Err::FormErr(form_errors))));
+			return Err(Problem::from_form(form_errors));
 		}
+
+		let hash = argon2::hash_encoded(
+			&payload.password.as_bytes(),
+			&state.secret_salt_key.as_bytes(),
+			&Config::default(),
+		)
+		.unwrap();
 
 		let user = sqlx::query!(
 			"INSERT INTO users (email, username, password) VALUES ($1, $2, $3)",
 			&payload.email,
 			&payload.username,
-			&payload.password
+			&hash
 		)
 		.execute(&state.db_pool)
 		.await;
@@ -72,31 +104,100 @@ impl Auth {
 		if let Err(err) = user {
 			if let Error::Database(db_err) = err {
 				if let Some(constraint) = db_err.constraint() {
-					let constraint_string = constraint.replace("users_", "").replace("_key", "");
-					return (
-						StatusCode::BAD_REQUEST,
-						Err(Json(Err::StdErr(StdErr {
-							error: format!("The {} is taken", constraint_string),
-						}))),
-					);
-				}	
+					let formatted = constraint.replace("users_", "").replace("_key", "");
+					return Err(Problem {
+						status: StatusCode::BAD_REQUEST,
+						short: format!("Invalid {formatted}"),
+						message: format!("The {formatted} already exsists."),
+						variant: ProblemVariant::StdErr,
+					});
+				}
 			}
 
-			return (StatusCode::INTERNAL_SERVER_ERROR, Err(Json(
-				Err::StdErr(StdErr {
-					error: "Failed to create user".to_string(),
-				})
-			)));
+			return Err(Problem {
+				status: StatusCode::BAD_REQUEST,
+				short: "Failed to register".to_string(),
+				message: "Failed to register user.".to_string(),
+				variant: ProblemVariant::StdErr,
+			});
 		}
 
-		(StatusCode::OK, Ok(()))
+		Ok(())
 	}
 
-	pub async fn login() -> &'static str {
-		""
-	}
+	/// The handler for logging in.
+	pub async fn login(
+		State(state): State<AppState>,
+		Json(payload): Json<LoginPayload>,
+	) -> Result<impl IntoResponse, Problem> {
+		let hash = argon2::hash_encoded(
+			&payload.password.as_bytes(),
+			&state.secret_salt_key.as_bytes(),
+			&Config::default(),
+		)?;
 
-	pub async fn logout() -> &'static str {
-		""
+		let user = match sqlx::query_as!(
+			User,
+			"SELECT * FROM users WHERE email = $1 AND password = $2",
+			&payload.email,
+			&hash,
+		)
+		.fetch_one(&state.db_pool)
+		.await
+		{
+			Ok(user) => user,
+			Err(err) => {
+				if let Error::RowNotFound = err {
+					return Err(Problem {
+						status: StatusCode::BAD_REQUEST,
+						short: "Invalid email or password".to_string(),
+						message: "The email or password used is invalid.".to_string(),
+						variant: ProblemVariant::StdErr,
+					})
+				}
+
+				return Err(Problem {
+					status: StatusCode::BAD_REQUEST,
+					short: "Failed to login".to_string(),
+					message: "Failed to login user.".to_string(),
+					variant: ProblemVariant::StdErr,
+				})
+			}
+		};
+
+		let matches = argon2::verify_encoded(&user.password, &payload.password.as_bytes())?;
+
+		if !matches {
+			return Err(Problem {
+				status: StatusCode::BAD_REQUEST,
+				short: "Invalid email or password".to_string(),
+				message: "The email or password used is invalid.".to_string(),
+				variant: ProblemVariant::StdErr,
+			});
+		}
+
+		let refresh_token = generate_refresh_token(32);
+		let access_token = generate_access_token(&user, &state.secret_jwt_key)?;
+		sqlx::query!(
+			"INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)",
+			user.id,
+			&refresh_token
+		)
+		.execute(&state.db_pool)
+		.await?;
+
+		let refresh_token_cookie = Cookie::build("refresh_token", refresh_token)
+			.path("/")
+			.finish()
+			.to_string();
+		let access_token_cookie = Cookie::build("access_token", access_token)
+			.path("/")
+			.finish()
+			.to_string();
+		let builder = Response::builder()
+			.header(SET_COOKIE, refresh_token_cookie)
+			.header(SET_COOKIE, access_token_cookie);
+
+		Ok(builder.body("".to_string())?)
 	}
 }
