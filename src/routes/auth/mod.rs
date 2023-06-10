@@ -123,7 +123,7 @@ impl Auth {
 			});
 		}
 
-		Ok(())
+		Ok(StatusCode::CREATED)
 	}
 
 	/// The handler for logging in.
@@ -197,6 +197,6 @@ impl Auth {
 			.header(SET_COOKIE, refresh_token_cookie)
 			.header(SET_COOKIE, access_token_cookie);
 
-		Ok(redirect)
+		Ok(builder.body("".to_string())?)
 	}
 }
