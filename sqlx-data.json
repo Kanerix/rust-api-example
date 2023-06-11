@@ -1,0 +1,81 @@
+{
+  "db": "PostgreSQL",
+  "3f38d6ca73c36b7d9744121ad69d96b6c9898707fa537c9120dfba1e589bcc50": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "INSERT INTO users (email, username, password) VALUES ($1, $2, $3)"
+  },
+  "aee2bb6134bce87bd08f9528426f0b56c6960c13ba7b35d7c98408dc89579eb7": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)"
+  },
+  "c158b53ae14c877fc3cb3c44b80b5f62f62a03f4804a898cd3cf4bdae687df53": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int4"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "email",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "password",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created_at",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Text"
+        ]
+      }
+    },
+    "query": "SELECT * FROM users WHERE email = $1 AND password = $2"
+  }
+}

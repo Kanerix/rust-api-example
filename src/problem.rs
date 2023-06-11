@@ -41,9 +41,7 @@ impl IntoResponse for Problem {
 	}
 }
 
-impl<E> From<E> for Problem
-where
-	E: Error,
+impl<E: Error> From<E> for Problem
 {
 	fn from(value: E) -> Self {
 		Self {
