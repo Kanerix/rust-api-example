@@ -47,6 +47,7 @@ pub struct LoginPayload {
 }
 
 impl Auth {
+	/// Returns the routes for the auth module.
 	pub fn routes() -> Router<AppState> {
 		Router::new()
 			.route("/register", post(Self::register))
@@ -85,18 +86,17 @@ impl Auth {
 			return Err(Problem::from_form(form_errors));
 		}
 
-		let hash = argon2::hash_encoded(
+		let password_hash = argon2::hash_encoded(
 			payload.password.as_bytes(),
 			state.env.hash_salt.as_bytes(),
 			&Config::default(),
-		)
-		.unwrap();
+		)?;
 
 		let user = sqlx::query!(
 			"INSERT INTO users (email, username, password) VALUES ($1, $2, $3)",
 			&payload.email,
 			&payload.username,
-			&hash
+			&password_hash
 		)
 		.execute(&state.db_pool)
 		.await;
@@ -105,6 +105,7 @@ impl Auth {
 			if let Error::Database(db_err) = err {
 				if let Some(constraint) = db_err.constraint() {
 					let formatted = constraint.replace("users_", "").replace("_key", "");
+
 					return Err(Problem {
 						status: StatusCode::BAD_REQUEST,
 						title: format!("Invalid {formatted}"),
@@ -122,7 +123,7 @@ impl Auth {
 			});
 		}
 
-		Ok(())
+		Ok(StatusCode::CREATED)
 	}
 
 	/// The handler for logging in.
@@ -165,9 +166,7 @@ impl Auth {
 			}
 		};
 
-		let matches = argon2::verify_encoded(&user.password, payload.password.as_bytes())?;
-
-		if !matches {
+		if !argon2::verify_encoded(&user.password, payload.password.as_bytes())? {
 			return Err(Problem {
 				status: StatusCode::BAD_REQUEST,
 				title: "Invalid email or password".to_string(),

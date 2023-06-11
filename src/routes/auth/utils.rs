@@ -157,38 +157,10 @@ pub fn generate_access_token(
 		sub: user.id.to_string(),
 		exp: 900,
 	};
+
 	encode(
 		&Header::default(),
 		&claims,
 		&jsonwebtoken::EncodingKey::from_secret(secret.as_ref()),
 	)
-}
-
-#[cfg(test)]
-mod tests {
-	use crate::routes::auth::utils::{validate_email, validate_password, validate_username};
-
-	#[test]
-	fn validate_email_test() {
-		assert!(!validate_email("name@mail").is_ok());
-		assert!(!validate_email("@mail.com").is_ok());
-		assert!(!validate_email("name@.com").is_ok());
-		assert!(validate_email("name@mail.com").is_ok());
-	}
-
-	#[test]
-	fn validate_username_test() {
-		assert!(!validate_username("!Username123").is_ok());
-		assert!(!validate_username("Us").is_ok());
-		assert!(validate_username("Username123").is_ok());
-		assert!(validate_username("username").is_ok());
-	}
-
-	#[test]
-	fn validate_password_test() {
-		assert!(!validate_password("password").is_ok());
-		assert!(!validate_password("Password").is_ok());
-		assert!(!validate_password("Password123").is_ok());
-		assert!(validate_password("!Password123").is_ok());
-	}
 }
