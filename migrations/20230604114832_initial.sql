@@ -1,8 +1,11 @@
+CREATE TYPE role AS ENUM ('admin', 'user');
+
 CREATE TABLE users (
 	id 			SERIAL PRIMARY KEY,
-	username 		VARCHAR(32) NOT NULL UNIQUE,
+	username 	VARCHAR(32) NOT NULL UNIQUE,
 	email 		VARCHAR(64) NOT NULL UNIQUE,
-	password 		VARCHAR(100) NOT NULL,
+	password 	VARCHAR(100) NOT NULL,
+	role		role NOT NULL DEFAULT 'user',
 	created_at 	TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	updated_at 	TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

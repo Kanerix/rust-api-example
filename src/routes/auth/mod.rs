@@ -1,9 +1,8 @@
 mod utils;
 
-use argon2::Config;
 use axum::{
 	extract::State,
-	http::{header::SET_COOKIE, Response, StatusCode},
+	http::{header::SET_COOKIE, StatusCode, HeaderMap},
 	response::IntoResponse,
 	routing::post,
 	Router, Form,
@@ -12,12 +11,11 @@ use axum_extra::extract::cookie::Cookie;
 use serde::{Deserialize, Serialize};
 
 use sqlx::Error;
-use utils::{validate_email, validate_password, validate_username};
 
 use crate::{
 	model::User,
-	problem::{FormErr, Problem},
-	AppState,
+	problem::Problem,
+	AppState, routes::auth::utils::hash_password,
 };
 
 use self::utils::{generate_access_token, generate_refresh_token};
@@ -59,39 +57,9 @@ impl Auth {
 		State(state): State<AppState>,
 		Form(payload): Form<RegisterPayload>,
 	) -> Result<impl IntoResponse, Problem> {
-		let mut form_errors: Vec<FormErr> = Vec::new();
-
-		if let Err(err) = validate_email(&payload.email) {
-			form_errors.push(FormErr {
-				field: "email".to_string(),
-				issues: err.into_iter().map(|e| e.to_string()).collect(),
-			})
-		};
-
-		if let Err(err) = validate_username(&payload.username) {
-			form_errors.push(FormErr {
-				field: "username".to_string(),
-				issues: err.into_iter().map(|e| e.to_string()).collect(),
-			})
-		};
-
-		if let Err(err) = validate_password(&payload.password) {
-			form_errors.push(FormErr {
-				field: "password".to_string(),
-				issues: err.into_iter().map(|e| e.to_string()).collect(),
-			})
-		};
-
-		if !form_errors.is_empty() {
-			return Err(Problem::from_form(form_errors));
-		}
-
-		let password_hash = argon2::hash_encoded(
-			payload.password.as_bytes(),
-			state.env.hash_salt.as_bytes(),
-			&Config::default(),
-		)?;
-
+		let password_hash = hash_password(payload.password.as_bytes())?;
+		dbg!(&password_hash);
+		dbg!(&payload.email);
 		let user = sqlx::query!(
 			"INSERT INTO users (email, username, password) VALUES ($1, $2, $3)",
 			&payload.email,
@@ -105,12 +73,10 @@ impl Auth {
 			if let Error::Database(db_err) = err {
 				if let Some(constraint) = db_err.constraint() {
 					let formatted = constraint.replace("users_", "").replace("_key", "");
-
 					return Err(Problem {
 						status: StatusCode::BAD_REQUEST,
 						title: format!("Invalid {formatted}"),
 						detail: format!("The {formatted} already exsists."),
-						form: None
 					});
 				}
 			}
@@ -119,7 +85,6 @@ impl Auth {
 				status: StatusCode::BAD_REQUEST,
 				title: "Failed to register".to_string(),
 				detail: "Failed to register user.".to_string(),
-				form: None
 			});
 		}
 
@@ -131,52 +96,39 @@ impl Auth {
 		State(state): State<AppState>,
 		Form(payload): Form<LoginPayload>,
 	) -> Result<impl IntoResponse, Problem> {
-		let hash = argon2::hash_encoded(
-			payload.password.as_bytes(),
-			state.env.hash_salt.as_bytes(),
-			&Config::default(),
-		)?;
-
-		let user = match sqlx::query_as!(
-			User,
+		let password_hash = hash_password(&payload.password.as_bytes())?;
+		dbg!(&password_hash);
+		dbg!(&payload.email);
+		let user = sqlx::query_as_unchecked!(
+			User,	
 			"SELECT * FROM users WHERE email = $1 AND password = $2",
 			&payload.email,
-			&hash,
+			&password_hash
 		)
 		.fetch_one(&state.db_pool)
-		.await
-		{
-			Ok(user) => user,
-			Err(err) => {
-				if let Error::RowNotFound = err {
-					return Err(Problem {
-						status: StatusCode::BAD_REQUEST,
-						title: "Invalid email or password".to_string(),
-						detail: "The email or password used is invalid.".to_string(),
-						form: None
-					})
-				}
+		.await;
 
-				return Err(Problem {
-					status: StatusCode::BAD_REQUEST,
-					title: "Failed to login".to_string(),
-					detail: "Failed to login user.".to_string(),
-					form: None
-				})
-			}
-		};
+		dbg!(&user);
+		if let Err(Error::RowNotFound) = user {
+			return Err(Problem {
+				status: StatusCode::BAD_REQUEST,
+				title: "Invalid email or password".to_string(),
+				detail: "The email or password used is invalid.".to_string(),
+			})
+		}
+
+		let user = user?;
 
 		if !argon2::verify_encoded(&user.password, payload.password.as_bytes())? {
 			return Err(Problem {
 				status: StatusCode::BAD_REQUEST,
 				title: "Invalid email or password".to_string(),
 				detail: "The email or password used is invalid.".to_string(),
-				form: None
 			});
 		}
 
 		let refresh_token = generate_refresh_token(32);
-		let access_token = generate_access_token(&user, &state.env.jwt_key)?;
+		let access_token = generate_access_token(&user)?;
 		sqlx::query!(
 			"INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2)",
 			user.id,
@@ -193,10 +145,11 @@ impl Auth {
 			.path("/")
 			.finish()
 			.to_string();
-		let builder = Response::builder()
-			.header(SET_COOKIE, refresh_token_cookie)
-			.header(SET_COOKIE, access_token_cookie);
 
-		Ok(builder.body("".to_string())?)
+		let mut headers = HeaderMap::new();
+		headers.append(SET_COOKIE, refresh_token_cookie.parse()?);
+		headers.append(SET_COOKIE, access_token_cookie.parse()?);
+
+		Ok(headers)
 	}
 }
