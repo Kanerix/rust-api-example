@@ -1,5 +1,5 @@
-use chrono::{Utc, DateTime};
-use serde::{Serialize, Deserialize};
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 #[derive(sqlx::FromRow, Debug)]
 pub struct User {
@@ -13,7 +13,7 @@ pub struct User {
 }
 
 #[derive(sqlx::Type, Serialize, Deserialize, Debug, Clone)]
-#[sqlx(type_name = "role", rename_all = "lowercase")] 
+#[sqlx(type_name = "role", rename_all = "lowercase")]
 pub enum Role {
 	User,
 	Admin,

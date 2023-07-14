@@ -1,20 +1,14 @@
-use axum::{response::{IntoResponse, Response}, http::StatusCode, Json};
+use axum::{
+	http::StatusCode,
+	response::{IntoResponse, Response},
+	Json,
+};
 use serde::{Deserialize, Serialize};
-
-/// An issue is a single form error message.
-type Issue = Vec<String>;
-
-/// The error returned when a form is invalid.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct FormErr {
-	pub field: String,
-	pub issues: Issue,
-}
 
 /// The problem that can be returned when an endpoint errors.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Problem {
-    #[serde(skip_serializing, skip_deserializing)]
+	#[serde(skip_serializing, skip_deserializing)]
 	pub status: StatusCode,
 	pub title: String,
 	pub detail: String,

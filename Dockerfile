@@ -17,4 +17,4 @@ RUN addgroup -S rust && \
 
 EXPOSE 8080
 
-RUN cargo run
+CMD ["./rust-api-example"]
