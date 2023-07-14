@@ -5,8 +5,7 @@ mod routes;
 
 use std::net::{Ipv4Addr, SocketAddrV4};
 
-use axum::middleware;
-use routes::{auth::guard::guard, Routes};
+use routes::Routes;
 
 #[tokio::main]
 async fn main() {
@@ -26,7 +25,6 @@ async fn main() {
 
 	let app = axum::Router::new()
 		.nest("/api", Routes::generate())
-		.route_layer(middleware::from_fn(guard))
 		.with_state(pool);
 
 	let addr = SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 8080).into();

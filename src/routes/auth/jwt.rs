@@ -62,7 +62,7 @@ pub fn generate_access_token(user: &User) -> anyhow::Result<String> {
 }
 
 /// Verifies an access token
-pub fn verify_access_token(token: &str) -> anyhow::Result<TokenData<Claims>> {
+pub fn verify_jwt_token(token: &str) -> anyhow::Result<TokenData<Claims>> {
 	let token =
 		jsonwebtoken::decode::<Claims>(token, &KEYS.decoding, &Validation::new(Algorithm::EdDSA))?;
 
